@@ -27,6 +27,20 @@ class ProductioniseCommand extends Command
             return self::SUCCESS;
         }
 
+        if ($mode === 'conflict') {
+            $this->line('  <error> CONFLICT </error> Assets found in BOTH public/ and project root.');
+            $this->line('  Run <comment>php artisan env:status</comment> for details, then <comment>php artisan env:reset</comment> to restore a backup.');
+            $this->newLine();
+            return self::FAILURE;
+        }
+
+        if ($mode === 'unknown') {
+            $this->line('  <comment>!</comment> No managed asset folders found (css, js, images, build).');
+            $this->line('  If this is a fresh Vite project, run <comment>npm run build</comment> first.');
+            $this->newLine();
+            return self::FAILURE;
+        }
+
         $this->line('  Current mode: <info>LOCAL</info>');
         $this->line('  This will move <comment>css/, js/, images/, build/</comment> from <comment>public/</comment> to project root.');
         $this->line('  A backup will be created automatically before any changes.');

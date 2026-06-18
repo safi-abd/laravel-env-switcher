@@ -4,6 +4,7 @@ namespace MohammadSafiAbdullah\EnvSwitcher\Console;
 
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\File;
+use MohammadSafiAbdullah\EnvSwitcher\Services\EnvironmentSwitcher;
 
 class ResetCommand extends Command
 {
@@ -13,10 +14,7 @@ class ResetCommand extends Command
 
     protected $description = 'Restore asset folders from a backup (previous or original)';
 
-    /** Asset dirs managed by this package */
-    protected array $assetDirs = ['css', 'js', 'images', 'build'];
-
-    public function handle(): int
+    public function handle(EnvironmentSwitcher $switcher): int
     {
         $type       = $this->option('to');
         $backupPath = base_path('.env-switcher-backups/' . $type);
@@ -25,13 +23,6 @@ class ResetCommand extends Command
         $this->line('  <fg=yellow;options=bold>ENV SWITCHER</> — Reset');
         $this->line('  ────────────────────────────');
         $this->newLine();
-
-        if (!in_array($type, ['previous', 'original', 'manual'])) {
-            $this->line("  <e> ERROR </e> Unknown backup type '<comment>{$type}</comment>'.");
-            $this->line("  Valid options: <comment>previous</comment>, <comment>original</comment>, <comment>manual</comment>");
-            $this->newLine();
-            return self::FAILURE;
-        }
 
         if (!File::isDirectory($backupPath)) {
             $this->line("  <e> ERROR </e> Backup '<comment>{$type}</comment>' not found at:");
@@ -77,9 +68,17 @@ class ResetCommand extends Command
             }
 
             // Only wipe current state AFTER temp copy succeeded
-            foreach ($this->assetDirs as $dir) {
+            foreach ($switcher->getAssetDirs() as $dir) {
                 File::deleteDirectory(public_path($dir));
                 File::deleteDirectory(base_path($dir));
+            }
+
+            // Clean .htaccess from both locations before restore
+            if (File::isFile(public_path('.htaccess'))) {
+                File::delete(public_path('.htaccess'));
+            }
+            if (File::isFile(base_path('.htaccess'))) {
+                File::delete(base_path('.htaccess'));
             }
 
             // Restore from temp

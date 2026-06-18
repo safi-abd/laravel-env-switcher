@@ -27,6 +27,20 @@ class LocaliseCommand extends Command
             return self::SUCCESS;
         }
 
+        if ($mode === 'conflict') {
+            $this->line('  <error> CONFLICT </error> Assets found in BOTH public/ and project root.');
+            $this->line('  Run <comment>php artisan env:status</comment> for details, then <comment>php artisan env:reset</comment> to restore a backup.');
+            $this->newLine();
+            return self::FAILURE;
+        }
+
+        if ($mode === 'unknown') {
+            $this->line('  <comment>!</comment> No managed asset folders found (css, js, images, build).');
+            $this->line('  If this is a fresh project, there is nothing to move yet.');
+            $this->newLine();
+            return self::FAILURE;
+        }
+
         $this->line('  Current mode: <info>PRODUCTION</info>');
         $this->line('  This will move <comment>css/, js/, images/, build/</comment> from project root back into <comment>public/</comment>.');
         $this->line('  A backup will be created automatically before any changes.');

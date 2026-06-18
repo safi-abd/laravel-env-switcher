@@ -14,6 +14,11 @@ class EnvironmentSwitcher
      */
     protected array $assetDirs = ['css', 'js', 'images', 'build'];
 
+    public function getAssetDirs(): array
+    {
+        return $this->assetDirs;
+    }
+
     public function setCommand(Command $command): void
     {
         $this->command = $command;
@@ -203,6 +208,11 @@ class EnvironmentSwitcher
         }
 
         if (File::isFile(public_path('.htaccess'))) {
+            if (File::isFile(base_path('.htaccess'))) {
+                throw new \RuntimeException(
+                    "Cannot move .htaccess — file already exists at project root.\nDelete or rename the existing .htaccess at project root first."
+                );
+            }
             File::move(public_path('.htaccess'), base_path('.htaccess'));
             $this->info('Moved: <comment>.htaccess</comment> → project root');
         }
@@ -240,6 +250,11 @@ class EnvironmentSwitcher
         }
 
         if (File::isFile(base_path('.htaccess'))) {
+            if (File::isFile(public_path('.htaccess'))) {
+                throw new \RuntimeException(
+                    "Cannot move .htaccess — file already exists in public/.\nDelete or rename the existing .htaccess in public/ first."
+                );
+            }
             File::move(base_path('.htaccess'), public_path('.htaccess'));
             $this->info('Moved: <comment>.htaccess</comment> → public/');
         }
@@ -256,8 +271,8 @@ class EnvironmentSwitcher
         ];
 
         foreach ($this->assetDirs as $dir) {
-            $inPublic = File::isDirectory(public_path($dir));
-            $inRoot   = File::isDirectory(base_path($dir));
+            $inPublic = File::isDirectory(public_path($dir)) && count(File::allFiles(public_path($dir))) > 0;
+            $inRoot   = File::isDirectory(base_path($dir)) && count(File::allFiles(base_path($dir))) > 0;
 
             $result['assets'][$dir] = [
                 'in_public' => $inPublic,
