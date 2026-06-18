@@ -94,7 +94,7 @@ class EnvironmentSwitcher
             return $items;
         }
 
-        foreach (File::files($publicPath) as $file) {
+        foreach (File::files($publicPath, true) as $file) {
             $name = $file->getFilename();
             if (!in_array($name, $this->skipItems) && !is_link($file->getPathname())) {
                 $items[] = $name;
@@ -139,7 +139,7 @@ class EnvironmentSwitcher
             $backupPublic = $backupPath . '/public';
             File::makeDirectory($backupPublic, 0755, true);
 
-            foreach (File::files($publicPath) as $file) {
+            foreach (File::files($publicPath, true) as $file) {
                 if (!is_link($file->getPathname())) {
                     File::copy($file->getRealPath(), $backupPublic . '/' . $file->getFilename());
                 }
