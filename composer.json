@@ -1,13 +1,13 @@
 {
-    "name": "techamber/laravel-env-switcher",
+    "name": "safi/laravel-env-switcher",
     "description": "Safely switch Laravel asset folders between local (public/) and shared-hosting (root) layouts.",
     "type": "library",
     "license": "MIT",
     "keywords": ["laravel", "shared-hosting", "assets", "deployment", "environment"],
     "authors": [
         {
-            "name": "TechAmber",
-            "homepage": "https://techamber.in"
+            "name": "M Safi Abdullah",
+            "email": "saficodes@gmail.com"
         }
     ],
     "require": {
