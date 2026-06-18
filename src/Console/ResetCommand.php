@@ -1,6 +1,6 @@
 <?php
 
-namespace Techamber\EnvSwitcher\Console;
+namespace MohammadSafiAbdullah\EnvSwitcher\Console;
 
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\File;

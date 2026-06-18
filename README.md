@@ -26,7 +26,7 @@ You don't want to manually move folders every time you switch environments. This
 ## Installation
 
 ```bash
-composer require techamber/laravel-env-switcher
+composer require mohammadsafiabdullah/laravel-env-switcher
 ```
 
 Auto-discovery registers the service provider. No config file needed.
@@ -143,4 +143,4 @@ The package checks whether any of the managed directories (`css`, `js`, `images`
 
 ## License
 
-MIT © [TechAmber](https://techamber.in)
+MIT © M Safi Abdullah

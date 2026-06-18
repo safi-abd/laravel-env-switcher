@@ -1,9 +1,9 @@
 <?php
 
-namespace Techamber\EnvSwitcher\Console;
+namespace MohammadSafiAbdullah\EnvSwitcher\Console;
 
 use Illuminate\Console\Command;
-use Techamber\EnvSwitcher\Services\EnvironmentSwitcher;
+use MohammadSafiAbdullah\EnvSwitcher\Services\EnvironmentSwitcher;
 
 class LocaliseCommand extends Command
 {

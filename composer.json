@@ -1,5 +1,5 @@
 {
-    "name": "safi/laravel-env-switcher",
+    "name": "mohammadsafiabdullah/laravel-env-switcher",
     "description": "Safely switch Laravel asset folders between local (public/) and shared-hosting (root) layouts.",
     "type": "library",
     "license": "MIT",
@@ -20,18 +20,18 @@
     },
     "autoload": {
         "psr-4": {
-            "Techamber\\EnvSwitcher\\": "src/"
+            "MohammadSafiAbdullah\\EnvSwitcher\\": "src/"
         }
     },
     "autoload-dev": {
         "psr-4": {
-            "Techamber\\EnvSwitcher\\Tests\\": "tests/"
+            "MohammadSafiAbdullah\\EnvSwitcher\\Tests\\": "tests/"
         }
     },
     "extra": {
         "laravel": {
             "providers": [
-                "Techamber\\EnvSwitcher\\EnvSwitcherServiceProvider"
+                "MohammadSafiAbdullah\\EnvSwitcher\\EnvSwitcherServiceProvider"
             ]
         }
     },
