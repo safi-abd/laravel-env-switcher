@@ -9,34 +9,54 @@ class EnvironmentSwitcher
 {
     protected ?Command $command = null;
 
-    /**
-     * Asset folder names managed by this package.
-     */
-    protected array $assetDirs = ['css', 'js', 'images', 'build'];
-
-    public function getAssetDirs(): array
-    {
-        return $this->assetDirs;
-    }
+    protected array $skipItems = ['.gitignore'];
 
     public function setCommand(Command $command): void
     {
         $this->command = $command;
     }
 
+    /* ---------------- STATE FILE ---------------- */
+
+    protected function statePath(): string
+    {
+        return base_path('.env-switcher.json');
+    }
+
+    public function readState(): ?array
+    {
+        if (File::isFile($this->statePath())) {
+            return json_decode(File::get($this->statePath()), true);
+        }
+        return null;
+    }
+
+    protected function writeState(string $mode, array $moved = []): void
+    {
+        File::put($this->statePath(), json_encode([
+            'mode' => $mode,
+            'moved' => $moved,
+        ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
+    }
+
+    protected function deleteState(): void
+    {
+        if (File::isFile($this->statePath())) {
+            File::delete($this->statePath());
+        }
+    }
+
     /* ---------------- MODE DETECTION ---------------- */
 
-    /**
-     * Detect current mode by checking which asset directories exist and where.
-     *
-     * A project is considered LOCAL  when ANY asset dir lives inside public/.
-     * A project is considered PRODUCTION when assets exist at root and NOT in public/.
-     * UNKNOWN means we can't determine state (e.g. brand-new project with no assets yet).
-     */
     public function detectMode(): string
     {
-        $inPublic = $this->anyExistsIn('public');
-        $inRoot   = $this->anyExistsIn('root');
+        $state = $this->readState();
+        if ($state && isset($state['mode'])) {
+            return $state['mode'];
+        }
+
+        $inPublic = File::isFile(public_path('index.php'));
+        $inRoot = File::isFile(base_path('index.php'));
 
         if ($inPublic && $inRoot) {
             return 'conflict';
@@ -63,15 +83,38 @@ class EnvironmentSwitcher
         return $this->detectMode() === 'production';
     }
 
-    protected function anyExistsIn(string $location): bool
+    /* ---------------- PUBLIC CONTENTS ---------------- */
+
+    public function getPublicItems(): array
     {
-        foreach ($this->assetDirs as $dir) {
-            $path = $location === 'public' ? public_path($dir) : base_path($dir);
-            if (File::isDirectory($path) && count(File::allFiles($path)) > 0) {
-                return true;
+        $items = [];
+        $publicPath = public_path();
+
+        if (!File::isDirectory($publicPath)) {
+            return $items;
+        }
+
+        foreach (File::files($publicPath) as $file) {
+            $name = $file->getFilename();
+            if (!in_array($name, $this->skipItems) && !is_link($file->getPathname())) {
+                $items[] = $name;
             }
         }
-        return false;
+
+        foreach (File::directories($publicPath) as $dir) {
+            $name = basename($dir);
+            if (!in_array($name, $this->skipItems) && !is_link($dir)) {
+                $items[] = $name;
+            }
+        }
+
+        return $items;
+    }
+
+    public function getMovedItems(): array
+    {
+        $state = $this->readState();
+        return $state['moved'] ?? [];
     }
 
     /* ---------------- BACKUP ---------------- */
@@ -91,84 +134,124 @@ class EnvironmentSwitcher
 
         File::makeDirectory($backupPath, 0755, true);
 
-        foreach ($this->assetDirs as $dir) {
-            $this->copyIfExists(public_path($dir), $backupPath . '/public/' . $dir);
-            $this->copyIfExists(base_path($dir),   $backupPath . '/root/'   . $dir);
+        $publicPath = public_path();
+        if (File::isDirectory($publicPath)) {
+            $backupPublic = $backupPath . '/public';
+            File::makeDirectory($backupPublic, 0755, true);
+
+            foreach (File::files($publicPath) as $file) {
+                if (!is_link($file->getPathname())) {
+                    File::copy($file->getRealPath(), $backupPublic . '/' . $file->getFilename());
+                }
+            }
+
+            foreach (File::directories($publicPath) as $dir) {
+                if (!is_link($dir)) {
+                    File::copyDirectory($dir, $backupPublic . '/' . basename($dir));
+                }
+            }
         }
 
-        // Also back up .htaccess from wherever it currently lives
-        $this->copyFileIfExists(public_path('.htaccess'), $backupPath . '/public/.htaccess');
-        $this->copyFileIfExists(base_path('.htaccess'),   $backupPath . '/root/.htaccess');
+        $movedItems = $this->getMovedItems();
+        if (!empty($movedItems)) {
+            $backupRoot = $backupPath . '/root';
+            File::makeDirectory($backupRoot, 0755, true);
+
+            foreach ($movedItems as $item) {
+                $source = base_path($item);
+                $dest = $backupRoot . '/' . $item;
+
+                if (File::isDirectory($source) && !is_link($source)) {
+                    File::copyDirectory($source, $dest);
+                } elseif (File::isFile($source)) {
+                    File::copy($source, $dest);
+                }
+            }
+        }
+
+        if (File::isFile($this->statePath())) {
+            File::copy($this->statePath(), $backupPath . '/.env-switcher.json');
+        }
 
         $this->info("Backup created: <comment>{$type}</comment>");
     }
 
-    protected function copyIfExists(string $from, string $to): void
+    /* ---------------- MOVE WITH ROLLBACK ---------------- */
+
+    protected function moveItems(array $items, string $fromBase, string $toBase): void
     {
-        if (File::isDirectory($from)) {
-            File::copyDirectory($from, $to);
-        }
-    }
+        $moved = [];
 
-    protected function copyFileIfExists(string $from, string $to): void
-    {
-        if (File::isFile($from)) {
-            File::ensureDirectoryExists(dirname($to));
-            File::copy($from, $to);
-        }
-    }
-
-    /* ---------------- SAFE MOVE WITH ATOMIC ROLLBACK ---------------- */
-
-    /**
-     * Move a directory from $from to $to.
-     * If a file collision is detected, the entire operation is aborted
-     * and already-moved files are rolled back before throwing.
-     */
-    protected function moveDirectory(string $from, string $to): void
-    {
-        if (!File::isDirectory($from)) {
-            $this->warn("Skipping (not found): {$from}");
-            return;
-        }
-
-        $files   = File::allFiles($from);
-        $moved   = [];
-
-        // Pre-flight: check for collisions before touching anything
-        foreach ($files as $file) {
-            $target = $to . '/' . $file->getRelativePathname();
-            if (File::exists($target)) {
+        foreach ($items as $item) {
+            $target = $toBase . '/' . $item;
+            if (File::exists($target) || File::isDirectory($target)) {
                 throw new \RuntimeException(
-                    "Cannot move — file already exists at destination:\n  {$target}\n\nRun 'php artisan env:reset' to restore a clean state, or delete the conflicting file manually."
+                    "Cannot move — '{$item}' already exists at destination:\n  {$target}\n\nResolve the conflict manually or run 'php artisan env:reset'."
                 );
             }
         }
 
-        // Move files one by one, tracking what we've moved for rollback
         try {
-            foreach ($files as $file) {
-                $relative = $file->getRelativePathname();
-                $target   = $to . '/' . $relative;
+            foreach ($items as $item) {
+                $source = $fromBase . '/' . $item;
+                $target = $toBase . '/' . $item;
 
-                File::ensureDirectoryExists(dirname($target));
-                File::move($file->getRealPath(), $target);
-                $moved[] = ['from' => $file->getRealPath(), 'to' => $target];
+                if (!File::exists($source) && !File::isDirectory($source)) {
+                    continue;
+                }
+
+                if (File::isDirectory($source)) {
+                    File::copyDirectory($source, $target);
+                    File::deleteDirectory($source);
+                } else {
+                    File::ensureDirectoryExists(dirname($target));
+                    File::move($source, $target);
+                }
+
+                $moved[] = $item;
+                $this->info("Moved: <comment>{$item}</comment>");
             }
-
-            File::deleteDirectory($from);
-            $this->info("Moved: <comment>{$from}</comment> → <comment>{$to}</comment>");
         } catch (\Throwable $e) {
-            // Rollback: move each successfully-moved file back
             $this->warn("Error during move — rolling back...");
-            foreach (array_reverse($moved) as $pair) {
-                if (File::exists($pair['to'])) {
-                    File::ensureDirectoryExists(dirname($pair['from']));
-                    File::move($pair['to'], $pair['from']);
+            foreach (array_reverse($moved) as $item) {
+                $source = $fromBase . '/' . $item;
+                $target = $toBase . '/' . $item;
+
+                try {
+                    if (File::isDirectory($target)) {
+                        File::copyDirectory($target, $source);
+                        File::deleteDirectory($target);
+                    } elseif (File::isFile($target)) {
+                        File::ensureDirectoryExists(dirname($source));
+                        File::move($target, $source);
+                    }
+                } catch (\Throwable $rollbackError) {
+                    // Best-effort rollback
                 }
             }
             throw $e;
         }
+    }
+
+    /* ---------------- INDEX.PHP PATH PATCHING ---------------- */
+
+    protected function patchIndexPhp(string $path, string $direction): void
+    {
+        if (!File::isFile($path)) {
+            return;
+        }
+
+        $content = File::get($path);
+
+        if ($direction === 'production') {
+            $content = str_replace("__DIR__.'/../", "__DIR__.'/", $content);
+            $content = str_replace('__DIR__."/../', '__DIR__."/', $content);
+        } else {
+            $content = str_replace("__DIR__.'/", "__DIR__.'/../", $content);
+            $content = str_replace('__DIR__."/', '__DIR__."/../', $content);
+        }
+
+        File::put($path, $content);
     }
 
     /* ---------------- PRODUCTIONISE ---------------- */
@@ -184,38 +267,34 @@ class EnvironmentSwitcher
 
         if ($mode === 'conflict') {
             throw new \RuntimeException(
-                "Asset conflict detected — files exist in BOTH public/ and root.\nRun 'php artisan env:status' for details, then 'php artisan env:reset' to restore a backup."
+                "Conflict detected — index.php exists in BOTH public/ and project root.\nRun 'php artisan env:status' for details, then 'php artisan env:reset' to restore a backup."
             );
         }
 
         if ($mode === 'unknown') {
             throw new \RuntimeException(
-                "No managed asset folders found (css, js, images, build).\nIf this is a fresh Vite project, run 'npm run build' first so public/build exists."
+                "Cannot determine current mode — public/index.php not found.\nEnsure you have a standard Laravel public/ directory."
             );
         }
 
-        // Create backups before touching anything
+        $items = $this->getPublicItems();
+
+        if (empty($items)) {
+            throw new \RuntimeException("Nothing to move — public/ directory is empty.");
+        }
+
         $this->createBackup('previous');
 
         if (!File::isDirectory($this->backupPath('original'))) {
             $this->createBackup('original');
         }
 
-        foreach ($this->assetDirs as $dir) {
-            if (File::isDirectory(public_path($dir))) {
-                $this->moveDirectory(public_path($dir), base_path($dir));
-            }
-        }
+        $this->moveItems($items, public_path(), base_path());
 
-        if (File::isFile(public_path('.htaccess'))) {
-            if (File::isFile(base_path('.htaccess'))) {
-                throw new \RuntimeException(
-                    "Cannot move .htaccess — file already exists at project root.\nDelete or rename the existing .htaccess at project root first."
-                );
-            }
-            File::move(public_path('.htaccess'), base_path('.htaccess'));
-            $this->info('Moved: <comment>.htaccess</comment> → project root');
-        }
+        $this->patchIndexPhp(base_path('index.php'), 'production');
+        $this->info("Patched <comment>index.php</comment> paths for project root");
+
+        $this->writeState('production', $items);
     }
 
     /* ---------------- LOCALISE ---------------- */
@@ -231,33 +310,32 @@ class EnvironmentSwitcher
 
         if ($mode === 'conflict') {
             throw new \RuntimeException(
-                "Asset conflict detected — files exist in BOTH public/ and root.\nRun 'php artisan env:status' for details, then 'php artisan env:reset' to restore a backup."
+                "Conflict detected — index.php exists in BOTH public/ and project root.\nRun 'php artisan env:status' for details, then 'php artisan env:reset' to restore a backup."
             );
         }
 
         if ($mode === 'unknown') {
             throw new \RuntimeException(
-                "No managed asset folders found (css, js, images, build).\nIf this is a fresh project, there is nothing to move yet."
+                "Cannot determine current mode.\nIf this is a fresh project, there is nothing to move yet."
+            );
+        }
+
+        $movedItems = $this->getMovedItems();
+
+        if (empty($movedItems)) {
+            throw new \RuntimeException(
+                "No record of moved items found in .env-switcher.json.\nRun 'php artisan env:reset' to restore from a backup."
             );
         }
 
         $this->createBackup('previous');
 
-        foreach ($this->assetDirs as $dir) {
-            if (File::isDirectory(base_path($dir))) {
-                $this->moveDirectory(base_path($dir), public_path($dir));
-            }
-        }
+        $this->patchIndexPhp(base_path('index.php'), 'local');
+        $this->info("Patched <comment>index.php</comment> paths for public/");
 
-        if (File::isFile(base_path('.htaccess'))) {
-            if (File::isFile(public_path('.htaccess'))) {
-                throw new \RuntimeException(
-                    "Cannot move .htaccess — file already exists in public/.\nDelete or rename the existing .htaccess in public/ first."
-                );
-            }
-            File::move(base_path('.htaccess'), public_path('.htaccess'));
-            $this->info('Moved: <comment>.htaccess</comment> → public/');
-        }
+        $this->moveItems($movedItems, base_path(), public_path());
+
+        $this->deleteState();
     }
 
     /* ---------------- STATUS ---------------- */
@@ -265,20 +343,11 @@ class EnvironmentSwitcher
     public function status(): array
     {
         $result = [
-            'mode'    => $this->detectMode(),
-            'assets'  => [],
+            'mode' => $this->detectMode(),
+            'public_items' => $this->getPublicItems(),
+            'moved_items' => $this->getMovedItems(),
             'backups' => [],
         ];
-
-        foreach ($this->assetDirs as $dir) {
-            $inPublic = File::isDirectory(public_path($dir)) && count(File::allFiles(public_path($dir))) > 0;
-            $inRoot   = File::isDirectory(base_path($dir)) && count(File::allFiles(base_path($dir))) > 0;
-
-            $result['assets'][$dir] = [
-                'in_public' => $inPublic,
-                'in_root'   => $inRoot,
-            ];
-        }
 
         $backupBase = base_path('.env-switcher-backups');
         if (File::isDirectory($backupBase)) {

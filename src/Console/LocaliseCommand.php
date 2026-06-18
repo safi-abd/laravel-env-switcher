@@ -10,7 +10,7 @@ class LocaliseCommand extends Command
     protected $signature = 'env:localise
                             {--force : Skip confirmation prompt}';
 
-    protected $description = 'Move asset folders from project root back into public/ for local development';
+    protected $description = 'Move public/ contents back from project root into public/ for local development';
 
     public function handle(EnvironmentSwitcher $switcher): int
     {
@@ -28,22 +28,23 @@ class LocaliseCommand extends Command
         }
 
         if ($mode === 'conflict') {
-            $this->line('  <error> CONFLICT </error> Assets found in BOTH public/ and project root.');
+            $this->line('  <error> CONFLICT </error> index.php found in BOTH public/ and project root.');
             $this->line('  Run <comment>php artisan env:status</comment> for details, then <comment>php artisan env:reset</comment> to restore a backup.');
             $this->newLine();
             return self::FAILURE;
         }
 
         if ($mode === 'unknown') {
-            $this->line('  <comment>!</comment> No managed asset folders found (css, js, images, build).');
+            $this->line('  <comment>!</comment> Cannot determine mode — no index.php found in either location.');
             $this->line('  If this is a fresh project, there is nothing to move yet.');
             $this->newLine();
             return self::FAILURE;
         }
 
         $this->line('  Current mode: <info>PRODUCTION</info>');
-        $this->line('  This will move <comment>css/, js/, images/, build/</comment> from project root back into <comment>public/</comment>.');
-        $this->line('  A backup will be created automatically before any changes.');
+        $this->line('  This will move all previously moved items back into <comment>public/</comment>.');
+        $this->line('  <comment>index.php</comment> paths will be patched automatically.');
+        $this->line('  A backup will be created before any changes.');
         $this->newLine();
 
         if (!$this->option('force') && !$this->confirm('  Continue?')) {

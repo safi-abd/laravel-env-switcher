@@ -9,10 +9,10 @@ use MohammadSafiAbdullah\EnvSwitcher\Services\EnvironmentSwitcher;
 class ResetCommand extends Command
 {
     protected $signature = 'env:reset
-                            {--to=previous : Which backup to restore (previous or original)}
+                            {--to=previous : Which backup to restore (e.g. previous, original, pre-deploy)}
                             {--force : Skip confirmation prompt}';
 
-    protected $description = 'Restore asset folders from a backup (previous or original)';
+    protected $description = 'Restore public/ contents from a backup';
 
     public function handle(EnvironmentSwitcher $switcher): int
     {
@@ -25,7 +25,7 @@ class ResetCommand extends Command
         $this->newLine();
 
         if (!File::isDirectory($backupPath)) {
-            $this->line("  <e> ERROR </e> Backup '<comment>{$type}</comment>' not found at:");
+            $this->line("  <error> ERROR </error> Backup '<comment>{$type}</comment>' not found at:");
             $this->line("  <fg=gray>{$backupPath}</>");
             $this->newLine();
 
@@ -44,7 +44,7 @@ class ResetCommand extends Command
         }
 
         $this->line("  Restoring from backup: <comment>{$type}</comment>");
-        $this->line("  This will overwrite all current asset folders.");
+        $this->line("  This will overwrite current public/ contents and any moved items.");
         $this->newLine();
 
         if (!$this->option('force') && !$this->confirm('  Continue?')) {
@@ -56,7 +56,6 @@ class ResetCommand extends Command
         $this->newLine();
 
         try {
-            // Copy to a temp location first so we can verify before wiping current state
             $tmpPath = base_path('.env-switcher-tmp-restore-' . time());
             File::makeDirectory($tmpPath, 0755, true);
 
@@ -67,18 +66,24 @@ class ResetCommand extends Command
                 File::copyDirectory($backupPath . '/root', $tmpPath . '/root');
             }
 
-            // Only wipe current state AFTER temp copy succeeded
-            foreach ($switcher->getAssetDirs() as $dir) {
-                File::deleteDirectory(public_path($dir));
-                File::deleteDirectory(base_path($dir));
+            // Wipe current public/ contents (except symlinks and .gitignore)
+            foreach ($switcher->getPublicItems() as $item) {
+                $path = public_path($item);
+                if (File::isDirectory($path)) {
+                    File::deleteDirectory($path);
+                } elseif (File::isFile($path)) {
+                    File::delete($path);
+                }
             }
 
-            // Clean .htaccess from both locations before restore
-            if (File::isFile(public_path('.htaccess'))) {
-                File::delete(public_path('.htaccess'));
-            }
-            if (File::isFile(base_path('.htaccess'))) {
-                File::delete(base_path('.htaccess'));
+            // Wipe moved items at root
+            foreach ($switcher->getMovedItems() as $item) {
+                $path = base_path($item);
+                if (File::isDirectory($path)) {
+                    File::deleteDirectory($path);
+                } elseif (File::isFile($path)) {
+                    File::delete($path);
+                }
             }
 
             // Restore from temp
@@ -89,19 +94,26 @@ class ResetCommand extends Command
                 File::copyDirectory($tmpPath . '/root', base_path());
             }
 
-            // Clean up temp
+            // Restore state file from backup (or delete if backup had none)
+            $backupStatePath = $backupPath . '/.env-switcher.json';
+            $statePath = base_path('.env-switcher.json');
+            if (File::isFile($backupStatePath)) {
+                File::copy($backupStatePath, $statePath);
+            } elseif (File::isFile($statePath)) {
+                File::delete($statePath);
+            }
+
             File::deleteDirectory($tmpPath);
 
             $this->line("  <info>✓</info> Restored from <comment>{$type}</comment> backup.");
             $this->newLine();
         } catch (\Throwable $e) {
-            // Attempt to clean up temp dir
             if (isset($tmpPath) && File::isDirectory($tmpPath)) {
                 File::deleteDirectory($tmpPath);
             }
 
             $this->newLine();
-            $this->line('  <e> FAILED </e> ' . $e->getMessage());
+            $this->line('  <error> FAILED </error> ' . $e->getMessage());
             $this->line('  <fg=gray>Your backup is still intact at:</> <comment>' . $backupPath . '</comment>');
             $this->newLine();
             return self::FAILURE;

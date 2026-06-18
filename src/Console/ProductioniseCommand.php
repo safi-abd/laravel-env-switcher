@@ -10,7 +10,7 @@ class ProductioniseCommand extends Command
     protected $signature = 'env:productionise
                             {--force : Skip confirmation prompt}';
 
-    protected $description = 'Move asset folders from public/ to project root for shared hosting';
+    protected $description = 'Move public/ contents to project root for shared hosting';
 
     public function handle(EnvironmentSwitcher $switcher): int
     {
@@ -28,22 +28,23 @@ class ProductioniseCommand extends Command
         }
 
         if ($mode === 'conflict') {
-            $this->line('  <error> CONFLICT </error> Assets found in BOTH public/ and project root.');
+            $this->line('  <error> CONFLICT </error> index.php found in BOTH public/ and project root.');
             $this->line('  Run <comment>php artisan env:status</comment> for details, then <comment>php artisan env:reset</comment> to restore a backup.');
             $this->newLine();
             return self::FAILURE;
         }
 
         if ($mode === 'unknown') {
-            $this->line('  <comment>!</comment> No managed asset folders found (css, js, images, build).');
-            $this->line('  If this is a fresh Vite project, run <comment>npm run build</comment> first.');
+            $this->line('  <comment>!</comment> Cannot determine mode — <comment>public/index.php</comment> not found.');
+            $this->line('  Ensure you have a standard Laravel public/ directory.');
             $this->newLine();
             return self::FAILURE;
         }
 
         $this->line('  Current mode: <info>LOCAL</info>');
-        $this->line('  This will move <comment>css/, js/, images/, build/</comment> from <comment>public/</comment> to project root.');
-        $this->line('  A backup will be created automatically before any changes.');
+        $this->line('  This will move all <comment>public/</comment> contents to the project root.');
+        $this->line('  <comment>index.php</comment> paths will be patched automatically.');
+        $this->line('  A backup will be created before any changes.');
         $this->newLine();
 
         if (!$this->option('force') && !$this->confirm('  Continue?')) {

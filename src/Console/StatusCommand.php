@@ -9,7 +9,7 @@ class StatusCommand extends Command
 {
     protected $signature = 'env:status';
 
-    protected $description = 'Show current asset mode and the state of all managed folders';
+    protected $description = 'Show current environment mode and the state of public/ contents';
 
     public function handle(EnvironmentSwitcher $switcher): int
     {
@@ -21,33 +21,36 @@ class StatusCommand extends Command
         $this->newLine();
 
         $modeLabel = match ($status['mode']) {
-            'local'      => '<info>LOCAL</info>        (assets in public/)',
-            'production' => '<comment>PRODUCTION</comment>   (assets at project root)',
-            'conflict'   => '<e> CONFLICT </e>  (assets found in BOTH locations)',
-            'unknown'    => '<fg=gray>UNKNOWN</fg=gray>      (no managed asset folders found)',
+            'local'      => '<info>LOCAL</info>        (public/ contains your entry point & assets)',
+            'production' => '<comment>PRODUCTION</comment>   (public/ contents moved to project root)',
+            'conflict'   => '<error> CONFLICT </error>  (index.php found in BOTH locations)',
+            'unknown'    => '<fg=gray>UNKNOWN</fg=gray>      (cannot determine — public/index.php not found)',
         };
 
         $this->line("  Mode: {$modeLabel}");
         $this->newLine();
 
-        // Asset table
-        $this->line('  <options=bold>Asset folders:</>');
-        $this->newLine();
-
-        $rows = [];
-        foreach ($status['assets'] as $dir => $locations) {
-            $inPub  = $locations['in_public']  ? '<info>✓ public/' . $dir . '</info>' : '<fg=gray>–</>';
-            $inRoot = $locations['in_root']     ? '<comment>✓ ' . $dir . '</comment>'   : '<fg=gray>–</>';
-            $rows[] = ['  ' . $dir, $inPub, $inRoot];
+        if (!empty($status['public_items'])) {
+            $this->line('  <options=bold>In public/:</>');
+            foreach ($status['public_items'] as $item) {
+                $this->line("    <info>•</info> {$item}");
+            }
+            $this->newLine();
         }
 
-        $this->table(
-            ['  Folder', 'public/', 'root/'],
-            $rows
-        );
+        if (!empty($status['moved_items'])) {
+            $this->line('  <options=bold>Moved to project root:</>');
+            foreach ($status['moved_items'] as $item) {
+                $this->line("    <comment>•</comment> {$item}");
+            }
+            $this->newLine();
+        }
 
-        // Backups
-        $this->newLine();
+        if (empty($status['public_items']) && empty($status['moved_items'])) {
+            $this->line('  <fg=gray>No items found in public/ or moved to root.</>');
+            $this->newLine();
+        }
+
         if (empty($status['backups'])) {
             $this->line('  <fg=gray>No backups found.</fg=gray>');
         } else {

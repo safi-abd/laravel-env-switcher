@@ -2,7 +2,7 @@
 
 A Laravel Artisan package for developers who deploy to **shared hosting** (Hostinger, Namecheap, cPanel, etc.) where the web root is the project root — not `public/`.
 
-On shared hosting you can't point the domain to `/public`, so your compiled assets (`css/`, `js/`, `images/`, `build/`) need to live at the **project root** instead. But locally, they live inside `public/` like a normal Laravel project. This package moves them back and forth safely.
+On shared hosting you can't point the domain to `/public`, so everything inside `public/` — `index.php`, `.htaccess`, assets, everything — needs to live at the **project root** instead. This package moves all `public/` contents back and forth safely, including automatically patching `index.php` paths.
 
 ---
 
@@ -12,14 +12,16 @@ On shared hosting you can't point the domain to `/public`, so your compiled asse
 Local dev               Shared hosting
 ───────────            ───────────────
 project/               project/
-├── public/            ├── css/          ← assets at root
-│   ├── css/           ├── js/
-│   ├── js/            ├── build/
-│   └── build/         ├── public/
+├── public/            ├── index.php     ← moved from public/
+│   ├── index.php      ├── .htaccess
+│   ├── .htaccess      ├── favicon.ico
+│   ├── favicon.ico    ├── build/
+│   ├── build/         ├── css/
+│   └── css/           ├── public/       ← empty
 └── ...                └── ...
 ```
 
-You don't want to manually move folders every time you switch environments. This package automates that — with backups, rollback, and conflict detection.
+You don't want to manually move files and patch paths every time you switch environments. This package automates that — with backups, rollback, and conflict detection.
 
 ---
 
@@ -37,9 +39,9 @@ Auto-discovery registers the service provider. No config file needed.
 
 | Command | What it does |
 |---|---|
-| `php artisan env:status` | Show current mode and state of all asset folders |
-| `php artisan env:productionise` | Move assets from `public/` → project root (for shared hosting) |
-| `php artisan env:localise` | Move assets from project root → `public/` (for local dev) |
+| `php artisan env:status` | Show current mode and what's in public/ vs root |
+| `php artisan env:productionise` | Move all `public/` contents → project root (for shared hosting) |
+| `php artisan env:localise` | Move everything back → `public/` (for local dev) |
 | `php artisan env:backup --type=pre-deploy` | Create a named backup snapshot |
 | `php artisan env:reset --to=previous` | Restore from a backup |
 
@@ -49,7 +51,7 @@ Auto-discovery registers the service provider. No config file needed.
 php artisan env:productionise --force   # skip the confirmation prompt
 php artisan env:localise --force
 php artisan env:reset --to=original    # restore the very first backup ever taken
-php artisan env:reset --to=manual      # restore a manually-created backup
+php artisan env:reset --to=pre-deploy  # restore any named backup
 ```
 
 ---
@@ -83,11 +85,30 @@ php artisan env:reset --to=original
 
 ## What gets moved
 
-- `css/`
-- `js/`
-- `images/`
-- `build/` (Vite output)
-- `.htaccess` (moved alongside assets)
+**Everything** inside `public/` is moved to the project root, including:
+
+- `index.php` (paths are automatically patched — `__DIR__.'/../'` becomes `__DIR__.'/'`)
+- `.htaccess`
+- `favicon.ico`, `robots.txt`
+- `build/`, `css/`, `js/`, `images/` — any asset folders
+- Any other files or directories you've added
+
+**Skipped automatically:**
+- Symlinks (e.g. `storage/` → `../storage/app/public`)
+- `.gitignore`
+
+---
+
+## How mode is detected
+
+The package uses a state file (`.env-switcher.json`) to track the current mode and which items were moved. If no state file exists, it falls back to checking where `index.php` lives.
+
+| State | Condition |
+|---|---|
+| `local` | `public/index.php` exists (standard Laravel) |
+| `production` | `index.php` at project root (moved from public/) |
+| `conflict` | `index.php` found in BOTH locations |
+| `unknown` | `index.php` not found anywhere |
 
 ---
 
@@ -103,29 +124,18 @@ Backups are stored in `.env-switcher-backups/` at the project root. Add this to 
 
 ---
 
-## How mode is detected
-
-The package checks whether any of the managed directories (`css`, `js`, `images`, `build`) contain files in `public/` vs the project root. This means it works with any asset pipeline — Vite, Mix, or manual.
-
-| State | Condition |
-|---|---|
-| `local` | At least one asset dir found in `public/` |
-| `production` | At least one asset dir found at root, none in `public/` |
-| `conflict` | Asset dirs found in BOTH locations |
-| `unknown` | No managed asset dirs found anywhere |
-
----
-
 ## Safety
 
 - **Pre-flight collision check** — before moving any files, the package checks for collisions at the destination. If a file already exists, the operation is aborted before touching anything.
-- **Per-file rollback** — if a move fails mid-way, already-moved files are moved back automatically.
+- **Per-item rollback** — if a move fails mid-way, already-moved items are moved back automatically.
+- **Automatic path patching** — `index.php` relative paths are updated so the app works in both locations.
+- **State tracking** — `.env-switcher.json` records exactly which items were moved, so `localise` knows what to move back.
 - **Atomic reset** — `env:reset` copies the backup to a temp location first, then verifies it before wiping the current state. Your backup is never at risk.
-- **Conflict detection** — if assets end up in both locations (e.g. after a failed operation or manual edits), the package detects this and refuses to switch until you resolve it.
+- **Conflict detection** — if `index.php` ends up in both locations, the package detects this and refuses to switch until you resolve it.
 
 ---
 
-## Add `.env-switcher-backups/` to `.gitignore`
+## Add to `.gitignore`
 
 ```
 .env-switcher-backups/
@@ -137,7 +147,7 @@ The package checks whether any of the managed directories (`css`, `js`, `images`
 ## Requirements
 
 - PHP 8.1+
-- Laravel 10, 11, or 12
+- Laravel 10, 11, 12, or 13
 
 ---
 
