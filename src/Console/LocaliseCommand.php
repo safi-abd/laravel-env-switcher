@@ -1,9 +1,9 @@
 <?php
 
-namespace SafiCodes\EnvSwitcher\Console;
+namespace SafiCodes\HostKit\Console;
 
 use Illuminate\Console\Command;
-use SafiCodes\EnvSwitcher\Services\EnvironmentSwitcher;
+use SafiCodes\HostKit\Services\HostKit;
 
 class LocaliseCommand extends Command
 {
@@ -12,10 +12,10 @@ class LocaliseCommand extends Command
 
     protected $description = 'Move public/ contents back from project root into public/ for local development';
 
-    public function handle(EnvironmentSwitcher $switcher): int
+    public function handle(HostKit $switcher): int
     {
         $this->newLine();
-        $this->line('  <fg=yellow;options=bold>ENV SWITCHER</> — Localise');
+        $this->line('  <fg=yellow;options=bold>HOSTKIT</> — Localise');
         $this->line('  ────────────────────────────────');
         $this->newLine();
 

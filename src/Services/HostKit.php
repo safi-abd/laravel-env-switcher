@@ -1,11 +1,11 @@
 <?php
 
-namespace SafiCodes\EnvSwitcher\Services;
+namespace SafiCodes\HostKit\Services;
 
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\File;
 
-class EnvironmentSwitcher
+class HostKit
 {
     protected ?Command $command = null;
 
@@ -20,7 +20,7 @@ class EnvironmentSwitcher
 
     protected function statePath(): string
     {
-        return base_path('.env-switcher.json');
+        return base_path('.hostkit.json');
     }
 
     public function readState(): ?array
@@ -121,7 +121,7 @@ class EnvironmentSwitcher
 
     protected function backupPath(string $type): string
     {
-        return base_path('.env-switcher-backups/' . $type);
+        return base_path('.hostkit-backups/' . $type);
     }
 
     public function createBackup(string $type = 'previous'): void
@@ -170,7 +170,7 @@ class EnvironmentSwitcher
         }
 
         if (File::isFile($this->statePath())) {
-            File::copy($this->statePath(), $backupPath . '/.env-switcher.json');
+            File::copy($this->statePath(), $backupPath . '/.hostkit.json');
         }
 
         $this->info("Backup created: <comment>{$type}</comment>");
@@ -260,7 +260,7 @@ class EnvironmentSwitcher
     {
         return <<<'HTACCESS'
 
-# BEGIN ENV-SWITCHER SECURITY
+# BEGIN HOSTKIT SECURITY
 # Protect sensitive files and directories when public/ contents are at project root
 <IfModule mod_rewrite.c>
     RewriteEngine On
@@ -274,7 +274,7 @@ class EnvironmentSwitcher
     RewriteRule ^phpunit\.xml(\.dist)?$ - [F,L]
     RewriteRule ^webpack\.mix\.js$ - [F,L]
     RewriteRule ^vite\.config\.(js|ts)$ - [F,L]
-    RewriteRule ^\.env-switcher\.json$ - [F,L]
+    RewriteRule ^\.hostkit\.json$ - [F,L]
 
     # Sensitive directories
     RewriteRule ^app/ - [F,L]
@@ -287,9 +287,9 @@ class EnvironmentSwitcher
     RewriteRule ^storage/ - [F,L]
     RewriteRule ^tests/ - [F,L]
     RewriteRule ^vendor/ - [F,L]
-    RewriteRule ^\.env-switcher-backups/ - [F,L]
+    RewriteRule ^\.hostkit-backups/ - [F,L]
 </IfModule>
-# END ENV-SWITCHER SECURITY
+# END HOSTKIT SECURITY
 HTACCESS;
     }
 
@@ -303,7 +303,7 @@ HTACCESS;
 
         $content = File::get($htaccess);
 
-        if (str_contains($content, '# BEGIN ENV-SWITCHER SECURITY')) {
+        if (str_contains($content, '# BEGIN HOSTKIT SECURITY')) {
             return;
         }
 
@@ -321,7 +321,7 @@ HTACCESS;
 
         $content = File::get($htaccess);
 
-        $pattern = '/\n?# BEGIN ENV-SWITCHER SECURITY.*?# END ENV-SWITCHER SECURITY/s';
+        $pattern = '/\n?# BEGIN HOSTKIT SECURITY.*?# END HOSTKIT SECURITY/s';
         $cleaned = preg_replace($pattern, '', $content);
 
         if ($cleaned !== $content) {
@@ -402,7 +402,7 @@ HTACCESS;
 
         if (empty($movedItems)) {
             throw new \RuntimeException(
-                "No record of moved items found in .env-switcher.json.\nRun 'php artisan env:reset' to restore from a backup."
+                "No record of moved items found in .hostkit.json.\nRun 'php artisan env:reset' to restore from a backup."
             );
         }
 
@@ -429,7 +429,7 @@ HTACCESS;
             'backups' => [],
         ];
 
-        $backupBase = base_path('.env-switcher-backups');
+        $backupBase = base_path('.hostkit-backups');
         if (File::isDirectory($backupBase)) {
             foreach (File::directories($backupBase) as $dir) {
                 $result['backups'][] = basename($dir);

@@ -1,8 +1,8 @@
-# laravel-env-switcher
+# laravel-hostkit
 
 A Laravel Artisan package for developers who deploy to **shared hosting** (Hostinger, Namecheap, cPanel, etc.) where the web root is the project root — not `public/`.
 
-On shared hosting you can't point the domain to `/public`, so everything inside `public/` — `index.php`, `.htaccess`, assets, everything — needs to live at the **project root** instead. This package moves all `public/` contents back and forth safely, including automatically patching `index.php` paths.
+On shared hosting you can't point the domain to `/public`, so everything inside `public/` — `index.php`, `.htaccess`, assets, everything — needs to live at the **project root** instead. This package moves all `public/` contents back and forth safely, including automatically patching `index.php` paths and securing sensitive files via `.htaccess`.
 
 ---
 
@@ -13,7 +13,7 @@ Local dev               Shared hosting
 ───────────            ───────────────
 project/               project/
 ├── public/            ├── index.php     ← moved from public/
-│   ├── index.php      ├── .htaccess
+│   ├── index.php      ├── .htaccess    ← security rules added
 │   ├── .htaccess      ├── favicon.ico
 │   ├── favicon.ico    ├── build/
 │   ├── build/         ├── css/
@@ -21,14 +21,14 @@ project/               project/
 └── ...                └── ...
 ```
 
-You don't want to manually move files and patch paths every time you switch environments. This package automates that — with backups, rollback, and conflict detection.
+You don't want to manually move files and patch paths every time you switch environments. This package automates that — with backups, rollback, conflict detection, and automatic `.htaccess` security.
 
 ---
 
 ## Installation
 
 ```bash
-composer require saficodes/laravel-env-switcher
+composer require saficodes/laravel-hostkit
 ```
 
 Auto-discovery registers the service provider. No config file needed.
@@ -88,7 +88,7 @@ php artisan env:reset --to=original
 **Everything** inside `public/` is moved to the project root, including:
 
 - `index.php` (paths are automatically patched — `__DIR__.'/../'` becomes `__DIR__.'/'`)
-- `.htaccess`
+- `.htaccess` (security rules are automatically added to block sensitive files)
 - `favicon.ico`, `robots.txt`
 - `build/`, `css/`, `js/`, `images/` — any asset folders
 - Any other files or directories you've added
@@ -99,9 +99,21 @@ php artisan env:reset --to=original
 
 ---
 
+## Security
+
+When you run `env:productionise`, the package automatically adds rules to `.htaccess` that block web access to sensitive files and directories:
+
+**Blocked files:** `.env`, `artisan`, `composer.json`, `composer.lock`, `package.json`, `phpunit.xml`, `vite.config.js/ts`
+
+**Blocked directories:** `app/`, `bootstrap/`, `config/`, `database/`, `lang/`, `resources/`, `routes/`, `storage/`, `tests/`, `vendor/`
+
+These rules are automatically removed when you run `env:localise`.
+
+---
+
 ## How mode is detected
 
-The package uses a state file (`.env-switcher.json`) to track the current mode and which items were moved. If no state file exists, it falls back to checking where `index.php` lives.
+The package uses a state file (`.hostkit.json`) to track the current mode and which items were moved. If no state file exists, it falls back to checking where `index.php` lives.
 
 | State | Condition |
 |---|---|
@@ -120,7 +132,7 @@ Every switch command automatically creates a `previous` backup before making any
 php artisan env:backup --type=pre-deploy
 ```
 
-Backups are stored in `.env-switcher-backups/` at the project root. Add this to `.gitignore`.
+Backups are stored in `.hostkit-backups/` at the project root. Add this to `.gitignore`.
 
 ---
 
@@ -129,7 +141,8 @@ Backups are stored in `.env-switcher-backups/` at the project root. Add this to 
 - **Pre-flight collision check** — before moving any files, the package checks for collisions at the destination. If a file already exists, the operation is aborted before touching anything.
 - **Per-item rollback** — if a move fails mid-way, already-moved items are moved back automatically.
 - **Automatic path patching** — `index.php` relative paths are updated so the app works in both locations.
-- **State tracking** — `.env-switcher.json` records exactly which items were moved, so `localise` knows what to move back.
+- **Automatic `.htaccess` security** — sensitive files and directories are blocked from web access in production mode.
+- **State tracking** — `.hostkit.json` records exactly which items were moved, so `localise` knows what to move back.
 - **Atomic reset** — `env:reset` copies the backup to a temp location first, then verifies it before wiping the current state. Your backup is never at risk.
 - **Conflict detection** — if `index.php` ends up in both locations, the package detects this and refuses to switch until you resolve it.
 
@@ -138,8 +151,8 @@ Backups are stored in `.env-switcher-backups/` at the project root. Add this to 
 ## Add to `.gitignore`
 
 ```
-.env-switcher-backups/
-.env-switcher-tmp-restore-*
+.hostkit-backups/
+.hostkit-tmp-restore-*
 ```
 
 ---

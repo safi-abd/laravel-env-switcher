@@ -1,10 +1,10 @@
 <?php
 
-namespace SafiCodes\EnvSwitcher\Console;
+namespace SafiCodes\HostKit\Console;
 
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\File;
-use SafiCodes\EnvSwitcher\Services\EnvironmentSwitcher;
+use SafiCodes\HostKit\Services\HostKit;
 
 class ResetCommand extends Command
 {
@@ -14,13 +14,13 @@ class ResetCommand extends Command
 
     protected $description = 'Restore public/ contents from a backup';
 
-    public function handle(EnvironmentSwitcher $switcher): int
+    public function handle(HostKit $switcher): int
     {
         $type       = $this->option('to');
-        $backupPath = base_path('.env-switcher-backups/' . $type);
+        $backupPath = base_path('.hostkit-backups/' . $type);
 
         $this->newLine();
-        $this->line('  <fg=yellow;options=bold>ENV SWITCHER</> — Reset');
+        $this->line('  <fg=yellow;options=bold>HOSTKIT</> — Reset');
         $this->line('  ────────────────────────────');
         $this->newLine();
 
@@ -29,7 +29,7 @@ class ResetCommand extends Command
             $this->line("  <fg=gray>{$backupPath}</>");
             $this->newLine();
 
-            $backupsRoot = base_path('.env-switcher-backups');
+            $backupsRoot = base_path('.hostkit-backups');
             if (File::isDirectory($backupsRoot)) {
                 $available = array_map('basename', File::directories($backupsRoot));
                 if (!empty($available)) {
@@ -56,7 +56,7 @@ class ResetCommand extends Command
         $this->newLine();
 
         try {
-            $tmpPath = base_path('.env-switcher-tmp-restore-' . time());
+            $tmpPath = base_path('.hostkit-tmp-restore-' . time());
             File::makeDirectory($tmpPath, 0755, true);
 
             if (File::isDirectory($backupPath . '/public')) {
@@ -95,8 +95,8 @@ class ResetCommand extends Command
             }
 
             // Restore state file from backup (or delete if backup had none)
-            $backupStatePath = $backupPath . '/.env-switcher.json';
-            $statePath = base_path('.env-switcher.json');
+            $backupStatePath = $backupPath . '/.hostkit.json';
+            $statePath = base_path('.hostkit.json');
             if (File::isFile($backupStatePath)) {
                 File::copy($backupStatePath, $statePath);
             } elseif (File::isFile($statePath)) {

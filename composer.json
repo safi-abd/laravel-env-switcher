@@ -1,5 +1,5 @@
 {
-    "name": "saficodes/laravel-env-switcher",
+    "name": "saficodes/laravel-hostkit",
     "description": "Safely switch Laravel asset folders between local (public/) and shared-hosting (root) layouts.",
     "type": "library",
     "license": "MIT",
@@ -20,18 +20,18 @@
     },
     "autoload": {
         "psr-4": {
-            "SafiCodes\\EnvSwitcher\\": "src/"
+            "SafiCodes\\HostKit\\": "src/"
         }
     },
     "autoload-dev": {
         "psr-4": {
-            "SafiCodes\\EnvSwitcher\\Tests\\": "tests/"
+            "SafiCodes\\HostKit\\Tests\\": "tests/"
         }
     },
     "extra": {
         "laravel": {
             "providers": [
-                "SafiCodes\\EnvSwitcher\\EnvSwitcherServiceProvider"
+                "SafiCodes\\HostKit\\HostKitServiceProvider"
             ]
         }
     },

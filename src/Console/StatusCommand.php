@@ -1,9 +1,9 @@
 <?php
 
-namespace SafiCodes\EnvSwitcher\Console;
+namespace SafiCodes\HostKit\Console;
 
 use Illuminate\Console\Command;
-use SafiCodes\EnvSwitcher\Services\EnvironmentSwitcher;
+use SafiCodes\HostKit\Services\HostKit;
 
 class StatusCommand extends Command
 {
@@ -11,12 +11,12 @@ class StatusCommand extends Command
 
     protected $description = 'Show current environment mode and the state of public/ contents';
 
-    public function handle(EnvironmentSwitcher $switcher): int
+    public function handle(HostKit $switcher): int
     {
         $status = $switcher->status();
 
         $this->newLine();
-        $this->line('  <fg=yellow;options=bold>ENV SWITCHER</> — Status');
+        $this->line('  <fg=yellow;options=bold>HOSTKIT</> — Status');
         $this->line('  ──────────────────────────────');
         $this->newLine();
 

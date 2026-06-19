@@ -1,9 +1,9 @@
 <?php
 
-namespace SafiCodes\EnvSwitcher\Console;
+namespace SafiCodes\HostKit\Console;
 
 use Illuminate\Console\Command;
-use SafiCodes\EnvSwitcher\Services\EnvironmentSwitcher;
+use SafiCodes\HostKit\Services\HostKit;
 
 class ProductioniseCommand extends Command
 {
@@ -12,10 +12,10 @@ class ProductioniseCommand extends Command
 
     protected $description = 'Move public/ contents to project root for shared hosting';
 
-    public function handle(EnvironmentSwitcher $switcher): int
+    public function handle(HostKit $switcher): int
     {
         $this->newLine();
-        $this->line('  <fg=yellow;options=bold>ENV SWITCHER</> — Productionise');
+        $this->line('  <fg=yellow;options=bold>HOSTKIT</> — Productionise');
         $this->line('  ─────────────────────────────────');
         $this->newLine();
 

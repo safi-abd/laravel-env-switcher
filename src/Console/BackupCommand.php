@@ -1,9 +1,9 @@
 <?php
 
-namespace SafiCodes\EnvSwitcher\Console;
+namespace SafiCodes\HostKit\Console;
 
 use Illuminate\Console\Command;
-use SafiCodes\EnvSwitcher\Services\EnvironmentSwitcher;
+use SafiCodes\HostKit\Services\HostKit;
 
 class BackupCommand extends Command
 {
@@ -12,12 +12,12 @@ class BackupCommand extends Command
 
     protected $description = 'Create a named snapshot of the current asset state';
 
-    public function handle(EnvironmentSwitcher $switcher): int
+    public function handle(HostKit $switcher): int
     {
         $type = $this->option('type');
 
         $this->newLine();
-        $this->line('  <fg=yellow;options=bold>ENV SWITCHER</> — Backup');
+        $this->line('  <fg=yellow;options=bold>HOSTKIT</> — Backup');
         $this->line('  ─────────────────────────────');
         $this->newLine();
 
