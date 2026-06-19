@@ -1,9 +1,9 @@
 <?php
 
-namespace MohammadSafiAbdullah\EnvSwitcher\Console;
+namespace SafiCodes\EnvSwitcher\Console;
 
 use Illuminate\Console\Command;
-use MohammadSafiAbdullah\EnvSwitcher\Services\EnvironmentSwitcher;
+use SafiCodes\EnvSwitcher\Services\EnvironmentSwitcher;
 
 class BackupCommand extends Command
 {

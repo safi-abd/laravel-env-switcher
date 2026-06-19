@@ -1,10 +1,10 @@
 <?php
 
-namespace MohammadSafiAbdullah\EnvSwitcher\Console;
+namespace SafiCodes\EnvSwitcher\Console;
 
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\File;
-use MohammadSafiAbdullah\EnvSwitcher\Services\EnvironmentSwitcher;
+use SafiCodes\EnvSwitcher\Services\EnvironmentSwitcher;
 
 class ResetCommand extends Command
 {

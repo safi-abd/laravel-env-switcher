@@ -20,18 +20,18 @@
     },
     "autoload": {
         "psr-4": {
-            "MohammadSafiAbdullah\\EnvSwitcher\\": "src/"
+            "SafiCodes\\EnvSwitcher\\": "src/"
         }
     },
     "autoload-dev": {
         "psr-4": {
-            "MohammadSafiAbdullah\\EnvSwitcher\\Tests\\": "tests/"
+            "SafiCodes\\EnvSwitcher\\Tests\\": "tests/"
         }
     },
     "extra": {
         "laravel": {
             "providers": [
-                "MohammadSafiAbdullah\\EnvSwitcher\\EnvSwitcherServiceProvider"
+                "SafiCodes\\EnvSwitcher\\EnvSwitcherServiceProvider"
             ]
         }
     },

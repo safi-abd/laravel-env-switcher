@@ -1,6 +1,6 @@
 <?php
 
-namespace MohammadSafiAbdullah\EnvSwitcher\Services;
+namespace SafiCodes\EnvSwitcher\Services;
 
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\File;

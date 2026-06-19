@@ -1,14 +1,14 @@
 <?php
 
-namespace MohammadSafiAbdullah\EnvSwitcher;
+namespace SafiCodes\EnvSwitcher;
 
 use Illuminate\Support\ServiceProvider;
-use MohammadSafiAbdullah\EnvSwitcher\Console\LocaliseCommand;
-use MohammadSafiAbdullah\EnvSwitcher\Console\ProductioniseCommand;
-use MohammadSafiAbdullah\EnvSwitcher\Console\ResetCommand;
-use MohammadSafiAbdullah\EnvSwitcher\Console\BackupCommand;
-use MohammadSafiAbdullah\EnvSwitcher\Console\StatusCommand;
-use MohammadSafiAbdullah\EnvSwitcher\Services\EnvironmentSwitcher;
+use SafiCodes\EnvSwitcher\Console\LocaliseCommand;
+use SafiCodes\EnvSwitcher\Console\ProductioniseCommand;
+use SafiCodes\EnvSwitcher\Console\ResetCommand;
+use SafiCodes\EnvSwitcher\Console\BackupCommand;
+use SafiCodes\EnvSwitcher\Console\StatusCommand;
+use SafiCodes\EnvSwitcher\Services\EnvironmentSwitcher;
 
 class EnvSwitcherServiceProvider extends ServiceProvider
 {
