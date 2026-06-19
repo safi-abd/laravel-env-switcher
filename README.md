@@ -28,7 +28,7 @@ You don't want to manually move files and patch paths every time you switch envi
 ## Installation
 
 ```bash
-composer require mohammadsafiabdullah/laravel-env-switcher
+composer require saficodes/laravel-env-switcher
 ```
 
 Auto-discovery registers the service provider. No config file needed.

@@ -1,5 +1,5 @@
 {
-    "name": "mohammadsafiabdullah/laravel-env-switcher",
+    "name": "saficodes/laravel-env-switcher",
     "description": "Safely switch Laravel asset folders between local (public/) and shared-hosting (root) layouts.",
     "type": "library",
     "license": "MIT",
