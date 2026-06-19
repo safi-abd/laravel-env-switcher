@@ -254,6 +254,82 @@ class EnvironmentSwitcher
         File::put($path, $content);
     }
 
+    /* ---------------- HTACCESS SECURITY ---------------- */
+
+    protected function securityBlock(): string
+    {
+        return <<<'HTACCESS'
+
+# BEGIN ENV-SWITCHER SECURITY
+# Protect sensitive files and directories when public/ contents are at project root
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # Sensitive files
+    RewriteRule ^\.env$ - [F,L]
+    RewriteRule ^\.env\..+$ - [F,L]
+    RewriteRule ^artisan$ - [F,L]
+    RewriteRule ^composer\.(json|lock)$ - [F,L]
+    RewriteRule ^package(-lock)?\.json$ - [F,L]
+    RewriteRule ^phpunit\.xml(\.dist)?$ - [F,L]
+    RewriteRule ^webpack\.mix\.js$ - [F,L]
+    RewriteRule ^vite\.config\.(js|ts)$ - [F,L]
+    RewriteRule ^\.env-switcher\.json$ - [F,L]
+
+    # Sensitive directories
+    RewriteRule ^app/ - [F,L]
+    RewriteRule ^bootstrap/ - [F,L]
+    RewriteRule ^config/ - [F,L]
+    RewriteRule ^database/ - [F,L]
+    RewriteRule ^lang/ - [F,L]
+    RewriteRule ^resources/ - [F,L]
+    RewriteRule ^routes/ - [F,L]
+    RewriteRule ^storage/ - [F,L]
+    RewriteRule ^tests/ - [F,L]
+    RewriteRule ^vendor/ - [F,L]
+    RewriteRule ^\.env-switcher-backups/ - [F,L]
+</IfModule>
+# END ENV-SWITCHER SECURITY
+HTACCESS;
+    }
+
+    protected function addSecurityRules(): void
+    {
+        $htaccess = base_path('.htaccess');
+
+        if (!File::isFile($htaccess)) {
+            return;
+        }
+
+        $content = File::get($htaccess);
+
+        if (str_contains($content, '# BEGIN ENV-SWITCHER SECURITY')) {
+            return;
+        }
+
+        File::append($htaccess, $this->securityBlock());
+        $this->info("Added security rules to <comment>.htaccess</comment>");
+    }
+
+    protected function removeSecurityRules(): void
+    {
+        $htaccess = base_path('.htaccess');
+
+        if (!File::isFile($htaccess)) {
+            return;
+        }
+
+        $content = File::get($htaccess);
+
+        $pattern = '/\n?# BEGIN ENV-SWITCHER SECURITY.*?# END ENV-SWITCHER SECURITY/s';
+        $cleaned = preg_replace($pattern, '', $content);
+
+        if ($cleaned !== $content) {
+            File::put($htaccess, $cleaned);
+            $this->info("Removed security rules from <comment>.htaccess</comment>");
+        }
+    }
+
     /* ---------------- PRODUCTIONISE ---------------- */
 
     public function productionise(): void
@@ -294,6 +370,8 @@ class EnvironmentSwitcher
         $this->patchIndexPhp(base_path('index.php'), 'production');
         $this->info("Patched <comment>index.php</comment> paths for project root");
 
+        $this->addSecurityRules();
+
         $this->writeState('production', $items);
     }
 
@@ -329,6 +407,8 @@ class EnvironmentSwitcher
         }
 
         $this->createBackup('previous');
+
+        $this->removeSecurityRules();
 
         $this->patchIndexPhp(base_path('index.php'), 'local');
         $this->info("Patched <comment>index.php</comment> paths for public/");
